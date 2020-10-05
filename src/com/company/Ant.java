@@ -9,16 +9,12 @@ public class Ant {
     LinkedList path = new <Integer>LinkedList();
     static int alpha;
     static int beta;
-    static int bestPathLength;
+    static int bestPathLength = Integer.MAX_VALUE;
+    static int greedyPathLength;
     int pathLength = 0;
 
-    static {
-        alpha = 0;
-        beta = 0;
-        //bestPathLength = calculateGreedyPath();
-    }
-
     void go() {
+
         int startTop = (int) (Math.random() * Rib.ribMatrix.length);
         path.add(startTop);
 
@@ -26,54 +22,50 @@ public class Ant {
             chooseRib();
         }
 
-        pathLength+= Rib.ribMatrix[(int) path.getFirst()][(int) path.getLast()].length;
-        path.add(path.getFirst());
-        Rib.ribMatrix[(int) path.getFirst()][(int) path.getLast()].ribCounter++;
+        pathLength += Rib.ribMatrix[(int) path.getFirst()][(int) path.getLast()].ribLength;
+        int tmp = (int) path.getFirst();
+        path.add(tmp);
+
     }
 
     void chooseRib() {
-        LinkedList<Integer> reachableTopsList = new <Integer>LinkedList();
 
-        for (int i = 0; i < Rib.ribMatrix.length; i++) {
-            if (!path.contains(i)) reachableTopsList.add(i);
-        }
-
-        Map<Integer, Double> revertedTransitionProbabilities = new HashMap<Integer, Double>();
-
+        int[] reachableTopsList = getReachableTopsList();
+        Map<Integer, Double> transitionProbabilities = new HashMap<>(Rib.ribMatrix.length);
+        double wholeFeromonLength = calculateWholeFeromonLength(reachableTopsList);
+        double transitionProbabilityNumber = 0;
 
         for (Integer i : reachableTopsList) {
 
-            double revertedTransitionProbability = 1 / getTransitionProbability(reachableTopsList, Rib.ribMatrix[(int) path.getLast()][i]);
-            revertedTransitionProbabilities.put(i, revertedTransitionProbability);
+            double transitionProbability = getTransitionProbability(wholeFeromonLength, Rib.ribMatrix[(int) path.getLast()][i]);
+            transitionProbabilityNumber += transitionProbability;
+            transitionProbabilities.put(i, transitionProbability);
 
         }
 
-        Integer nextTop = chooseTopRandomly(revertedTransitionProbabilities);
-        pathLength += Rib.ribMatrix[(int) path.getLast()][nextTop].length;
-        Rib.ribMatrix[(int) path.getLast()][nextTop].ribCounter++;
+        Integer nextTop = chooseTopRandomly(transitionProbabilities, reachableTopsList, transitionProbabilityNumber);
+        pathLength += Rib.ribMatrix[(int) path.getLast()][nextTop].ribLength;
         path.add(nextTop);
 
     }
 
-    int chooseTopRandomly(Map<Integer, Double> probabilities) {
-        double transtionProbabilityNumber = 0;
+    int chooseTopRandomly(Map<Integer, Double> probabilities, int[] reachableTopsList, double transitionProbabilityNumber) {
 
-        for (Map.Entry<Integer, Double> i : probabilities.entrySet()) {
-            transtionProbabilityNumber += i.getKey();
-        }
+        double randomNumber = (Math.random() * transitionProbabilityNumber);
+        double tmpNumber = 0;
 
-        double randomNumber = Math.random() * transtionProbabilityNumber;
-        int tmpNumber = 0;
 
-        for (Map.Entry<Integer, Double> i : probabilities.entrySet()) {
-            tmpNumber += i.getValue();
-            if (randomNumber < tmpNumber) return i.getKey();
+        for (Integer i : reachableTopsList) {
+
+            tmpNumber += probabilities.get(i);
+            if (tmpNumber > randomNumber) return i;
         }
 
         return -1;
     }
 
-    double calculateWholeFeromonLength(LinkedList<Integer> reachableTopsList) {
+    double calculateWholeFeromonLength(int[] reachableTopsList) {
+
         double wholeFeromonLength = 0;
 
         for (Integer i : reachableTopsList) {
@@ -82,16 +74,48 @@ public class Ant {
         return wholeFeromonLength;
     }
 
-    double getTransitionProbability(LinkedList<Integer> reachableTopsList, Rib rib) {
-        return calculateFeromonLength(rib) / calculateWholeFeromonLength(reachableTopsList);
+    double getTransitionProbability(double sum, Rib rib) {
+        return calculateFeromonLength(rib) / sum;
     }
 
     double calculateFeromonLength(Rib rib) {
 
-        double eyeSide = 1 / rib.length;
+        double eyeSide = (double) 1 / rib.ribLength;
         double feromon = rib.feromonQuantity;
         return Math.pow(feromon, alpha) * Math.pow(eyeSide, beta);
+    }
+
+    int[] getReachableTopsList() {
+        LinkedList<Integer> reachableTopsList = new <Integer>LinkedList();
+
+        for (int i = 0; i < Rib.ribMatrix.length; i++) {
+            if (!path.contains(i)) reachableTopsList.add(i);
+        }
+
+        int[] tmpArr = new int[reachableTopsList.size()];
+
+
+        for (int i = 0; i < tmpArr.length; i++) {
+            tmpArr[i] = reachableTopsList.getFirst();
+            reachableTopsList.removeFirst();
+        }
+
+        return tmpArr;
+    }
+
+    void putFeromones() {
+
+        for (int i = 0; i < path.size() - 1; i++) {
+            Rib.ribMatrix[(int) path.get(i)][(int) path.get(i + 1)].puttedFeromon += (double) greedyPathLength / pathLength;
+        }
 
     }
 
+
+    public static void main(String[] args) {
+        for (int i = 0; i < 1000; i++) {
+            System.out.println(Math.random() * 1.57);
+        }
+
+    }
 }
